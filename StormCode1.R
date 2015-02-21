@@ -1,7 +1,7 @@
 # PeerAssess1
-# Smartphones
+# StormData
+
 setwd("J:/coursera/DataScience/RepResearch/RepData_PeerAssessment2")
-setwd=("~")
 getwd()
 
 library("lubridate")
@@ -24,60 +24,129 @@ sd2$month <- month(sd2$BGN_DATE)
 
 g1y <- sd2
 groupyr <- factor(sd2$year)
-g1y <- data.frame(group=groupyr,sd2)
+g1y <- data.frame(year_group=groupyr,sd2)
 max(g1y$year)
 
 # -------------
+# EVENTS -
+# --------------
 groupevt <- factor(sd2$EVTYPE)
-gev <- data.frame(group=groupevt,g1y)
+gev <- data.frame(evt_group=groupevt,sd2)
+gev_inj_sum <- summarise(group_by(gev,evt_group), injuries = sum(INJURIES))
+gev_fat_sum <- summarise(group_by(gev,evt_group), fatalities = sum(FATALITIES))
+gev_pd_sum  <- summarise(group_by(gev,evt_group), propdmg=sum(PROPDMG))
 
-sum_fat_yr <- summarise(group_by(g1y,group), fatalities = sum(FATALITIES))
-sum_inj_yr <- summarise(group_by(g1y,group), injuries = sum(INJURIES))
-sum_propdmg_yr <- summarise(group_by(g1y,group), propdmg = sum(PROPDMG))
+gev_inj_sum <- gev_inj_sum[order(gev_inj_sum$injuries, decreasing=T),]
+gev_fat_sum <- gev_fat_sum[order(gev_fat_sum$fatalities, decreasing=T),]
+gev_pd_sum <-  gev_pd_sum[order(gev_pd_sum$propdmg, decreasing=T),]
+
+ia <- ia[order(ia$Year),]
+
+topteninj <- gev_inj_sum[1:10,]
+topteninj$evt_group <- factor(topteninj$evt_group) 
+injlabels <- topteninj$evt_group
+
+toptenfat <- gev_fat_sum[1:10,]
+
+toptenpropdmg <- gev_pd_sum[1:10,]
+
+# ------------------------
+evinjbycat <- ggplot(topteninj, aes(y=injuries, x=evt_group )) + 
+    geom_bar(stat="identity", fill="red",colour="black") +
+    xlab("Event Type") +
+    ylab("Injuries") +
+    ggtitle("Injuries by Event Type") +
+    theme_bw()  +
+    theme( axis.text.x = element_text(angle=60, hjust=1),
+    panel.grid.major.y= element_line(color="grey60", linetype="solid"),
+    panel.grid.minor.y= element_line(color="grey60", linetype="dashed"),
+    panel.grid.major.x= element_line(),
+    plot.title=element_text(size=rel(2)),
+    axis.title.x  = element_text(angle=0, vjust=0.5, size=rel(1.5)),
+    axis.title.y  = element_text(angle=90, vjust=0.5, size=rel(1.5))
+    )
+
+evinjbycat            
+
+# ---------------------
+
+evfatbycat <- ggplot(toptenfat, aes(y=fatalities, x=evt_group )) + 
+    geom_bar(stat="identity", fill="blue",colour="black") +
+    scale_fill_brewer(palette = "Blues") +
+    xlab("Event Type") +
+    ylab("Injuries") +
+    ggtitle("Fatalities by Event Type") +
+    theme_bw()  +
+    theme( axis.text.x = element_text(angle=60, hjust=1, size=rel(1)),
+           panel.grid.major.y= element_line(color="grey60", linetype="solid"),
+           panel.grid.minor.y= element_line(color="grey60", linetype="dashed"),
+           panel.grid.major.x= element_line(),
+           plot.title=element_text(size=rel(2)),
+           axis.title.x  = element_text(angle=0, vjust=0.5, size=rel(1.5)),
+           axis.title.y  = element_text(angle=90, vjust=0.5, size=rel(1.5))
+           #plot.xlab =element_text(size=rel(1.5))
+           )
+
+evfatbycat 
+          
+
+# ----------------------------------------------
+
+
+evpdbycat <- ggplot(toptenpropdmg, aes(y=propdmg/1000, x=evt_group )) + 
+    geom_bar(stat="identity", fill="blue",colour="black") +
+    scale_fill_brewer(palette = "Blues") +
+    xlab("Event Type") +
+    ylab("Damage in Billions $$$") +
+    ggtitle("Property Damge by Event Type in Dollars") +
+    theme_bw()  +
+    theme( axis.text.x = element_text(angle=60, hjust=1, size=rel(1)),
+           panel.grid.major.y= element_line(color="grey60", linetype="solid"),
+           panel.grid.minor.y= element_line(color="grey60", linetype="dashed"),
+           panel.grid.major.x= element_line(),
+           plot.title=element_text(size=rel(2)),
+           axis.title.x  = element_text(angle=0, vjust=0.5, hjust=0.5, size=rel(1.5)),
+           axis.title.y  = element_text(angle=90, hjust=0.6, vjust=0.5, size=rel(1.5))
+           #plot.xlab =element_text(size=rel(1.5))
+    )
+
+evpdbycat 
+
+
+
+# -----------------------------------------------
+
+
+
+
+
+
+sum_fat_yr <- summarise(group_by(g1y,year_group), fatalities = sum(FATALITIES))
+sum_inj_yr <- summarise(group_by(g1y,year_group), injuries = sum(INJURIES))
+sum_propdmg_yr <- summarise(group_by(g1y,year_group), propdmg = sum(PROPDMG))
 
 yrlabels = as.character(seq(1950,2011, by = 5))
 yrlabels2 = as.character(seq(1,62, by = 1))
 
 yrs = seq(1950,2011, by = 5)
 
-plot(sum_fat_yr$fatalities, sum_fat_yr$year,
-    main = "Fatalities per Year",
-    axes=F, pch=9,
-    xlab = "Year", ylab = "Fatalities")
-    axis(2)
-    axis(1, at= seq(1,62, by=5), labels=yrlabels)
-    box()
-
-plot(sum_inj_yr$injuries, sum_inj_yr$year, axes=F,
-     main="Injuries per year",
-     xlab = "Year", ylab = "Number of Injuries")
-     
-    axis(1, at= seq(1,62, by=5), labels=yrlabels)
-    axis(2)
-    box()
-
-par(pch=01)
-plot(sum_propdmg_yr$propdmg / 1000, sum_propdmg_yr$year,  main="Property Damage by Year",
-    axes=F, pch=9,
-    xlab = "Year", ylab = "$$ in Billions")
-    axis(2)
-    axis(1, at= seq(1,62, by=5), labels=yrlabels)
-    box()
-
-
-
-boxplot(sum_fat_yr$fatalities, main="Fatalities")
-boxplot(sum_inj_yr$injuries, main="Injuries")
-boxplot(sum_propdmg_yr$propdmg, main="Property Damage")
-
 ia <- read.csv("InflationAve.csv", header=T,sep=",", stringsAsFactors = F)
 
 corrfactor <- ia[1,2]
-ia$Ave <- corrfactor / ia$Ave. 
+ia$AveCorrFactor <- corrfactor / ia$Ave. 
+names(ia)[2] <- "Avg"
 
+# Order CPI by year Ascending
+ia <- ia[order(ia$Year),]
+plot(ia$Avg ~ia$Year, main="Consumer Price Index vs Year")
 
+spdyr <- sum_propdmg_yr
+#merged <- merge(myIncomplete, spit, by.x="interval", by.y="group", 
+ 
+mergedpd <- merge(spdyr, ia, by.x="year_group", by.y="Year")
 
-# -----------------
+mergedpd$pd_cpi <- mergedpd$propdmg *  mergedpd$AveCorrFactor
+    
 
 # ---------------------------
 # spdtcm <- summarise(group_by(g1m, group), spd = sum(steps))
@@ -95,8 +164,37 @@ x1 <- sd2[sd2$PROPDMG >= maxpd-1,]
 x2 <- sd2[sd2$INJURIES >= maxinj-1,]
 x3 <- sd2[sd2$FATALITIES >= maxfatal-1,]
 
-boxplot(g1y$INJURIES)
-boxplot(sd2$FATALITIES)
-boxplot(sd2$PROPDMG)
-#rm("InflationDataB")
-# rm("sum_yr")
+evtable <- data.frame(table(sd2$EVTYP, sd2$year))
+head (evtable, 20)
+
+
+
+library(ggplot2)
+
+# -----------------------------
+# Storm Damge $$$ GGPLOT2
+
+pd <- ggplot(mergedpd, aes(y=propdmg  / 1000, x=year_group, group=1))
+pd <- pd + geom_line(data=mergedpd, aes(x=year_group, y=pd_cpi/1000, group=1), col="green")
+pd  + geom_point() + stat_smooth(method = "loess") +
+    labs(title = "Storm Damage per Year -- Dollars") +
+    labs(x = "Year", y = "Injuries") +
+    scale_x_discrete(breaks=seq(1950, 2011, 5))
+# ------------------------------------------
+
+# FATALITIES per Year
+pf <- ggplot(sum_fat_yr, aes(y=fatalities, x=year_group, group=1))
+pf  + geom_point() + stat_smooth(method = "lm") +
+    labs(title = "Storm Fatalities per Year") +
+    labs(x = "Year", y = "Fatalities") +
+    scale_x_discrete(breaks=seq(1950, 2011, 5))
+
+# Injuries per year
+# -----------------
+pi <- pi <- ggplot(sum_inj_yr, aes(y=injuries, x=year_group, group=1))
+pi  + geom_point() + stat_smooth(method = "lm") +
+    labs(title = "Storm Injuries per Year") +
+    labs(x = "Year", y = "Injuries") +
+    scale_x_discrete(breaks=seq(1950, 2011, 5))
+
+# --------------------------------------------------

@@ -1,0 +1,210 @@
+---
+title: "Storm Data Analysis for the USA and associated Regions"
+author: "Dave Robinson"
+date: "Wednesday, February 18, 2015"
+output: html_document
+---
+
+##Synopsis:
+
+The purpose of this short summary is to determine what categories of severe storm and weather related events are of most concern as regards to health and safety of the citizens.
+
+The NOAA database contains records that have been collected since 1950. The records contain information on storm damage, injuries and deaths as a time series. However we are not particularly interested in analyzing these issues over time -- rather their likelihood of occurrence and possibly allowing users of this report to determine priorities.
+
+
+In terms of fatalities Tornadoes and heat stood out as the large contributors with Tornadoes being the greatest by far as shown in the following graphs.
+
+Tornadoes were again the leading contributor to injuries with wind, storms and lightening also being significant contributors. Floods and heat also contributed to injuries.
+
+It should be pointed out that regional variations could be significant as coastal areas are far more prone to flooding while affected far less by tornadoes which dominate the picture for damage, death and injuries.
+
+
+#Data Processing
+
+```{r Data Processing, cache=TRUE}
+library("lubridate")
+library("dplyr")
+library("ggplot2")
+library("gridExtra")
+
+
+sdURL <- "http://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+destFile = "repdata_data_StormData.csv.bz2"
+
+# Remove download for testing only...
+# ************************************************************************************
+download.file(sdURL, destFile, mode="wb")
+# ************************************************************************************
+
+# This works
+sd <- read.table(destFile, header=T,sep=",", stringsAsFactors = F)
+sd2 <-sd[,c(1:31,37)]
+
+# Setup year and month factors...
+sd2$BGN_DATE <- mdy_hms(sd2$BGN_DATE) #, "%m/%d/%Y %h:%M:%S", tz=sd2$TIME_ZONE)
+sd2$year <- year(sd2$BGN_DATE)
+sd2$month <- month(sd2$BGN_DATE)
+
+g1y <- sd2
+groupyr <- factor(sd2$year)
+g1y <- data.frame(year_group=groupyr,sd2)
+# max(g1y$year)
+
+
+
+# -------------
+# EVENTS -
+# --------------
+groupevt <- factor(sd2$EVTYPE)
+gev <- data.frame(evt_group=groupevt,sd2)
+gev_inj_sum <- summarise(group_by(gev,evt_group), injuries = sum(INJURIES))
+gev_fat_sum <- summarise(group_by(gev,evt_group), fatalities = sum(FATALITIES))
+gev_pd_sum  <- summarise(group_by(gev,evt_group), propdmg=sum(PROPDMG))
+
+gev_inj_sum <- gev_inj_sum[order(gev_inj_sum$injuries, decreasing=T),]
+gev_fat_sum <- gev_fat_sum[order(gev_fat_sum$fatalities, decreasing=T),]
+gev_pd_sum <-  gev_pd_sum[order(gev_pd_sum$propdmg, decreasing=T),]
+
+
+topteninj <- gev_inj_sum[1:10,]
+topteninj$evt_group <- factor(topteninj$evt_group) 
+injlabels <- topteninj$evt_group
+
+toptenfat <- gev_fat_sum[1:10,]
+
+toptenpropdmg <- gev_pd_sum[1:10,]
+
+sum_propdmg_yr <- summarise(group_by(g1y,year_group), propdmg = sum(PROPDMG))
+spdyr <- sum_propdmg_yr
+
+
+
+sum_fat_yr <- summarise(group_by(g1y,year_group), fatalities = sum(FATALITIES))
+sum_inj_yr <- summarise(group_by(g1y,year_group), injuries = sum(INJURIES))
+sum_propdmg_yr <- summarise(group_by(g1y,year_group), propdmg = sum(PROPDMG))
+
+# ------------------------
+
+
+```
+
+
+
+
+
+
+
+
+##Results
+
+###Injuries
+Injuries due to storm and sever weather events are dominated by Tornadoes and other severe storm events followed by floods -- also likely due to storms or possibly spring run-off events -- followed by Heat events.
+
+
+```{r injuries, cache=TRUE}
+evinjbycat <- ggplot(topteninj, aes(y=injuries, x=evt_group )) + 
+    geom_bar(stat="identity", fill="red",colour="black") +
+    xlab("Event Type") +
+    ylab("Injuries") +
+    ggtitle("Injuries by Event Type") +
+    theme_bw()  +
+    theme( axis.text.x = element_text(angle=60, hjust=1),
+    panel.grid.major.y= element_line(color="grey60", linetype="solid"),
+    panel.grid.minor.y= element_line(color="grey60", linetype="dashed"),
+    panel.grid.major.x= element_line(),
+    plot.title=element_text(size=rel(2)),
+    axis.title.x  = element_text(angle=0, vjust=0.5, size=rel(1.5)),
+    axis.title.y  = element_text(angle=90, vjust=0.5, size=rel(1.5))
+    )
+
+evinjbycat            
+
+
+```
+
+###Fatalities
+
+Fatalities due to severe weather events are again dominated by Tornado with Heat events and Flood events predominating. Other storm events such as lightening, high winds are also contributors to fatalities over the years 1950 to 2011.
+
+```{r Fatalities, cache=TRUE}
+evfatbycat <- ggplot(toptenfat, aes(y=fatalities, x=evt_group )) + 
+    geom_bar(stat="identity", fill="blue",colour="black") +
+    scale_fill_brewer(palette = "Blues") +
+    xlab("Event Type") +
+    ylab("Fatalities") +
+    ggtitle("Fatalities by Event Type") +
+    theme_bw()  +
+    theme( axis.text.x = element_text(angle=60, hjust=1, size=rel(1)),
+           panel.grid.major.y= element_line(color="grey60", linetype="solid"),
+           panel.grid.minor.y= element_line(color="grey60", linetype="dashed"),
+           panel.grid.major.x= element_line(),
+           plot.title=element_text(size=rel(2)),
+           axis.title.x  = element_text(angle=0, vjust=0.5, size=rel(1.5)),
+           axis.title.y  = element_text(angle=90, vjust=0.5, size=rel(1.5))
+           #plot.xlab =element_text(size=rel(1.5))
+           )
+
+evfatbycat 
+          
+```
+
+###Property Damage
+
+Graphing the effects of property damage showed a significant step change in the amount of data being collected at approximately 1993. For detailed analysis of local conditions it would likely be best to consider the years 1993 to the present when doing detailed analysis. The effect is less obvious when considering injuries and fatalities.
+
+
+Although not a direct health and safety issue the amount of proper damage that occurs due to sever weather events could be considered a contributor to mental and physical issues as anyone who has been through flooding of homes, loss of property through storm damage would likely attest. Dealing with insurance issues and government bureaucracy to receive compensation and aid can use significant amounts of time and through uncertainty can contribute to stress and mental health.
+
+Again, Tornadoes cause much of the damage, although floods and storms of various types contribute significantly to the property damage sustained because of severe weather. Winter Storms also appear in the top ten issues for the first time. Many people who live in areas affected by winter storms can cite issues such as lost employment days, interrupted travel plans and travel mishaps due to weather conditions.
+
+```{r Damage, cache=TRUE}
+
+
+require(gridExtra)
+# -----------------------------
+# Storm Damge $$$ GGPLOT2
+
+pd <- ggplot(spdyr, aes(y=propdmg  / 1000, x=year_group, group=1))
+pd <- pd+ geom_point() + stat_smooth(method = "loess") +
+    labs(title = "Storm Property Damage per Year -- Dollars") +
+    labs(x = "Year", y = "Injuries") +
+    scale_x_discrete(breaks=seq(1950, 2011, 5)
+    )
+# pd
+# ------------------------------------------
+
+evpdbycat <- ggplot(toptenpropdmg, aes(y=propdmg/1000, x=evt_group )) + 
+    geom_bar(stat="identity", fill="blue",colour="black") +
+    scale_fill_brewer(palette = "Blues") +
+    xlab("Event Type") +
+    ylab("Damage in Billions $$$") +
+    ggtitle("Property Damage by Event Type in Dollars") +
+    theme_bw()  +
+    theme( axis.text.x = element_text(angle=60, hjust=1, size=rel(1)),
+           panel.grid.major.y= element_line(color="grey60", linetype="solid"),
+           panel.grid.minor.y= element_line(color="grey60", linetype="dashed"),
+           panel.grid.major.x= element_line(),
+           plot.title=element_text(size=rel(2)),
+           axis.title.x  = element_text(angle=0, vjust=0.5, hjust=0.5, size=rel(1.5)),
+           axis.title.y  = element_text(angle=90, hjust=0.6, vjust=0.5, size=rel(1.5))
+           #plot.xlab =element_text(size=rel(1.5))
+    )
+
+#evpdbycat 
+
+
+grid.arrange(pd, evpdbycat , nrow=2, newpage=TRUE)
+
+grid.border
+
+
+```
+
+#Summary
+
+Tornadoes and wind are the most significant factors for health issues and in cause of storm damage overall. Floods and various types of water damage seem to be the most significant factors following those.
+
+
+
+
+
